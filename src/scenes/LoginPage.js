@@ -1,40 +1,193 @@
-import {StyleSheet, View, KeyboardAvoidingView, StatusBar} from 'react-native';
+import {
+  StyleSheet,
+  View,
+  KeyboardAvoidingView,
+  StatusBar,
+  Alert,
+} from 'react-native';
 import {Text, Image} from '@rneui/themed';
-import React, {useState, useEffect} from 'react';
-import {Button, Dialog, Input} from '@rneui/base';
+import React, {useState, useContext} from 'react';
+import * as Keychain from 'react-native-keychain';
+import {Button, color, Input} from '@rneui/base';
 import Icon from 'react-native-vector-icons/Octicons';
 import * as Animatable from 'react-native-animatable';
 import {SafeAreaView} from 'react-native-safe-area-context';
+import {AuthContext} from '../context/AuthContext';
+import {AxiosContext} from '../context/AxiosContext';
+import {colors} from '../components/Theme';
+import {Dimensions} from 'react-native';
+const myWidth = Dimensions.get('window').width;
+const myHeight = Dimensions.get('window').height;
 
 export default function LoginPage() {
-  const [dialogVisible, setDialogVisible] = useState(false);
+  const [myWidth, setMyWidth] = useState(null);
+  onLayout = event => {
+    const {width} = event.nativeEvent.layout;
+    setMyWidth(width);
+  };
+
+  const authContext = useContext(AuthContext);
+  const {publicAxios} = useContext(AxiosContext);
+
+  const [isButtonLoading, setIsButtonLoading] = useState(false);
   const [NPP, setNPP] = useState('');
   const [password, setPassword] = useState('');
   const [secureText, setSecureText] = useState(true);
   const [eyeStatus, setEyeStatus] = useState('eye-closed');
+
+  //Set password visible or invisible
   function eyeStatusHandler() {
     secureText === true ? setEyeStatus('eye') : setEyeStatus('eye-closed');
     setSecureText(!secureText);
   }
-  function toggleDialog() {
-    setDialogVisible(!dialogVisible);
-  }
+
+  const onLogin = async () => {
+    setIsButtonLoading(true);
+    try {
+      const response = await publicAxios.post(
+        '/signin',
+        JSON.stringify({
+          username: NPP,
+          password: password,
+        }),
+        {
+          headers: {
+            'content-type': 'application/json',
+          },
+        },
+      );
+
+      const {id, accessToken, refreshToken} = response.data;
+      authContext.setAuthState({
+        id,
+        accessToken,
+        refreshToken,
+        authenticated: true,
+      });
+
+      await Keychain.setGenericPassword(
+        'token',
+        JSON.stringify({
+          accessToken,
+          refreshToken,
+        }),
+      );
+    } catch (error) {
+      setIsButtonLoading(false);
+      Alert.alert('Login Failed', error.response.data.message);
+    }
+  };
+
+  //Login animation
+  const circleA = {
+    0: {
+      marginTop: -25,
+      marginLeft: -25,
+      opacity: 1,
+    },
+    0.5: {
+      marginTop: -25,
+      marginLeft: -50,
+      opacity: 1,
+    },
+    0.75: {
+      marginTop: -50,
+      marginLeft: -25,
+      opacity: 1,
+    },
+    1: {
+      marginTop: -50,
+      marginLeft: -25,
+      opacity: 0,
+    },
+  };
+  const circleB = {
+    0: {
+      marginTop: -25,
+      marginLeft: -25,
+      opacity: 1,
+    },
+    0.5: {
+      marginTop: -25,
+      marginLeft: 0,
+      opacity: 1,
+    },
+    0.75: {
+      marginTop: 0,
+      marginLeft: -25,
+      opacity: 1,
+    },
+    1: {
+      marginTop: 0,
+      marginLeft: -25,
+      opacity: 0,
+    },
+  };
+  const logoFadeIn = {
+    0: {
+      marginTop: -50,
+      opacity: 0,
+    },
+    0.5: {
+      marginTop: -50,
+      opacity: 1,
+    },
+    1: {
+      opacity: 1,
+      marginTop: -320,
+    },
+  };
+
   return (
     <SafeAreaView style={styles.body}>
       <StatusBar backgroundColor="#FFD60A" />
-      <Animatable.Image
-        animation="fadeIn"
-        delay={500}
-        duration={1000}
-        easing="ease-in-out"
-        source={{
-          uri: 'https://upload.wikimedia.org/wikipedia/id/6/6e/Logo_PT_Pindad_%28Persero%29.png',
-        }}
-        style={{width: 150, height: 100, marginVertical: 100}}
+      <Animatable.View
+        style={styles.circleA}
+        animation={circleA}
+        easing="ease-out"
+        duration={3000}
       />
       <Animatable.View
+        style={styles.circleB}
+        easing="ease-out"
+        animation={circleB}
+        duration={3000}
+      />
+      <Animatable.Image
+        animation={logoFadeIn}
+        delay={1500}
+        duration={2000}
+        easing="ease-in-out"
+        source={require('../assets/essp.png')}
+        style={{
+          tintColor: colors.dark10,
+          width: 66,
+          height: 100,
+          position: 'absolute',
+          left: '50%',
+          marginLeft: -33,
+          top: '50%',
+          marginTop: -50,
+        }}
+      />
+      <Animatable.Text
+        animation="fadeIn"
+        delay={3500}
+        duration={1000}
+        easing="ease-in-out"
+        style={{
+          fontSize: 18,
+          color: colors.dark10,
+          marginBottom: 60,
+          marginTop: 170,
+          fontWeight: 'bold',
+          textAlign: 'center',
+        }}>
+        EMPLOYEE SELF SERVICE {'\n'}PT. PINDAD
+      </Animatable.Text>
+      <Animatable.View
         animation="bounceInUp"
-        delay={500}
+        delay={3500}
         duration={2500}
         easing="ease-in"
         style={styles.formBox}>
@@ -55,9 +208,7 @@ export default function LoginPage() {
                 style={{marginRight: 5}}
               />
             }
-            onChange={e => {
-              setNPP(e.target.value);
-            }}
+            onChangeText={text => setNPP(text)}
           />
           <Input
             secureTextEntry={secureText}
@@ -84,9 +235,7 @@ export default function LoginPage() {
                 style={{marginRight: 5}}
               />
             }
-            onChange={e => {
-              setPassword(e.target.value);
-            }}
+            onChangeText={text => setPassword(text)}
           />
         </KeyboardAvoidingView>
         <Text style={{marginVertical: 20, textAlign: 'right', width: 280}}>
@@ -95,6 +244,8 @@ export default function LoginPage() {
         <Button
           title="Log In"
           titleStyle={{fontWeight: 'bold', fontSize: 18, color: '#333'}}
+          loading={isButtonLoading}
+          loadingStyle={{marginHorizontal: 15}}
           buttonStyle={{
             paddingHorizontal: 116,
             paddingVertical: 10,
@@ -102,7 +253,7 @@ export default function LoginPage() {
             borderRadius: 10,
           }}
           containerStyle={{marginBottom: 100}}
-          onPress={toggleDialog}
+          onPress={onLogin}
         />
       </Animatable.View>
     </SafeAreaView>
@@ -111,39 +262,61 @@ export default function LoginPage() {
 
 const styles = StyleSheet.create({
   body: {
+    alignItems: 'center',
     backgroundColor: '#FFD60A',
-    width: '100%',
-    height: '100%',
     display: 'flex',
     flexDirection: 'column',
+    height: '100%',
     justifyContent: 'flex-start',
-    alignItems: 'center',
+    width: '100%',
+  },
+  circleA: {
+    backgroundColor: colors.dark10,
+    borderRadius: 25,
+    height: 50,
+    left: '50%',
+    marginLeft: -25,
+    marginTop: -25,
+    position: 'absolute',
+    top: '50%',
+    width: 50,
+  },
+  circleB: {
+    backgroundColor: colors.dark10,
+    borderRadius: 25,
+    height: 50,
+    left: '50%',
+    marginLeft: -25,
+    marginTop: -25,
+    position: 'absolute',
+    top: '50%',
+    width: 50,
   },
   formBox: {
-    width: '100%',
+    alignItems: 'center',
     backgroundColor: 'white',
     borderTopLeftRadius: 50,
     borderTopRightRadius: 50,
-    paddingTop: 60,
     display: 'flex',
     flexDirection: 'column',
-    alignItems: 'center',
-  },
-  userForm: {
-    borderWidth: 2,
-    borderColor: '#666',
-    paddingHorizontal: 15,
-    paddingVertical: 5,
-    borderTopLeftRadius: 10,
-    borderTopRightRadius: 10,
-    marginTop: 30,
+    paddingTop: 60,
+    width: '100%',
   },
   passwordForm: {
-    borderWidth: 2,
-    borderColor: '#666',
-    paddingHorizontal: 15,
-    paddingVertical: 5,
     borderBottomLeftRadius: 10,
     borderBottomRightRadius: 10,
+    borderColor: '#666',
+    borderWidth: 2,
+    paddingHorizontal: 15,
+    paddingVertical: 5,
+  },
+  userForm: {
+    borderColor: '#666',
+    borderTopLeftRadius: 10,
+    borderTopRightRadius: 10,
+    borderWidth: 2,
+    marginTop: 30,
+    paddingHorizontal: 15,
+    paddingVertical: 5,
   },
 });
