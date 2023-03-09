@@ -1,37 +1,19 @@
-import {
-  StyleSheet,
-  View,
-  KeyboardAvoidingView,
-  StatusBar,
-  Alert,
-} from 'react-native';
+import {StyleSheet, KeyboardAvoidingView, StatusBar, Alert} from 'react-native';
 import {Text, Image} from '@rneui/themed';
 import React, {useState, useContext} from 'react';
-import * as Keychain from 'react-native-keychain';
 import {Button, color, Input} from '@rneui/base';
 import Icon from 'react-native-vector-icons/Octicons';
 import * as Animatable from 'react-native-animatable';
 import {SafeAreaView} from 'react-native-safe-area-context';
 import {AuthContext} from '../context/AuthContext';
-import {AxiosContext} from '../context/AxiosContext';
 import {colors} from '../components/Theme';
-import {Dimensions} from 'react-native';
-const myWidth = Dimensions.get('window').width;
-const myHeight = Dimensions.get('window').height;
 
-export default function LoginPage() {
-  const [myWidth, setMyWidth] = useState(null);
-  onLayout = event => {
-    const {width} = event.nativeEvent.layout;
-    setMyWidth(width);
-  };
-
-  const authContext = useContext(AuthContext);
-  const {publicAxios} = useContext(AxiosContext);
+export default function LoginPage({navigation}) {
+  const {login} = useContext(AuthContext);
 
   const [isButtonLoading, setIsButtonLoading] = useState(false);
-  const [NPP, setNPP] = useState('');
-  const [password, setPassword] = useState('');
+  const [NPP, setNPP] = useState('kminchelle');
+  const [password, setPassword] = useState('0lelplR');
   const [secureText, setSecureText] = useState(true);
   const [eyeStatus, setEyeStatus] = useState('eye-closed');
 
@@ -40,43 +22,6 @@ export default function LoginPage() {
     secureText === true ? setEyeStatus('eye') : setEyeStatus('eye-closed');
     setSecureText(!secureText);
   }
-
-  const onLogin = async () => {
-    setIsButtonLoading(true);
-    try {
-      const response = await publicAxios.post(
-        '/signin',
-        JSON.stringify({
-          username: NPP,
-          password: password,
-        }),
-        {
-          headers: {
-            'content-type': 'application/json',
-          },
-        },
-      );
-
-      const {id, accessToken, refreshToken} = response.data;
-      authContext.setAuthState({
-        id,
-        accessToken,
-        refreshToken,
-        authenticated: true,
-      });
-
-      await Keychain.setGenericPassword(
-        'token',
-        JSON.stringify({
-          accessToken,
-          refreshToken,
-        }),
-      );
-    } catch (error) {
-      setIsButtonLoading(false);
-      Alert.alert('Login Failed', error.response.data.message);
-    }
-  };
 
   //Login animation
   const circleA = {
@@ -238,7 +183,7 @@ export default function LoginPage() {
             onChangeText={text => setPassword(text)}
           />
         </KeyboardAvoidingView>
-        <Text style={{marginVertical: 20, textAlign: 'right', width: 280}}>
+        <Text style={{marginVertical: 20, textAlign: 'right', width: 280}} onPress={()=>navigation.navigate('SendEmailReset')} >
           Forgot Password?
         </Text>
         <Button
@@ -253,7 +198,9 @@ export default function LoginPage() {
             borderRadius: 10,
           }}
           containerStyle={{marginBottom: 100}}
-          onPress={onLogin}
+          onPress={() => {
+            login(NPP, password);
+          }}
         />
       </Animatable.View>
     </SafeAreaView>

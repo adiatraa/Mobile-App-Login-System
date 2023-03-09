@@ -1,37 +1,51 @@
 // src/components/Dashboard.js
 
-import React, {useContext, useState} from 'react';
+import React, {useContext, useState, useEffect} from 'react';
 import {StatusBar, SafeAreaView, StyleSheet, View} from 'react-native';
 import {colors, fonts} from '../components/Theme';
 import {AuthContext} from '../context/AuthContext';
-import {AxiosContext} from '../context/AxiosContext';
 import Spinner from '../components/Spinner';
-import {Button, Card, Text} from '@rneui/base';
+import {Button, Text} from '@rneui/base';
 import {Image} from '@rneui/themed';
 import Icon from 'react-native-vector-icons/Octicons';
+import axios from 'axios';
+import {BASE_URL} from '../../config';
 
 const HomePage = () => {
-  const axiosContext = useContext(AxiosContext);
-  const authContext = useContext(AuthContext);
-  const [image, setImage] = useState(null);
-  const [status, setStatus] = useState('idle');
+  const {logout, userToken, userInfo, newToken} = useContext(AuthContext);
+  const [status, setStatus] = useState('');
+  const [data, setData] = useState(null);
 
-  const loadImage = async () => {
+  useEffect(() => {
     setStatus('loading');
-    try {
-      const response = await axiosContext.authAxios.get('/user/1', {
-        headers: {
-          'content-type': 'application/json',
-          'x-access-token': authContext.getAccessToken(),
-        },
-      });
-      setStatus(authContext.getId());
-    } catch (error) {
-      setStatus(authContext.getId());
-    }
-  };
+    const fetchMyAPI = async () => {
+      try {
+        axios
+          .get(BASE_URL + '/test/user/' + userInfo.id, {
+            headers: {'x-access-token': userToken},
+          })
+          .then(response => {
+            setData(response.data);
+          })
+          .catch(e => {
+            axios
+              .post(BASE_URL + '/auth/refreshtoken', {
+                refreshToken: userInfo.refreshToken,
+              })
+              .then(response => newToken(response.accessToken))
+              .catch(e => logout());
+          });
+      } catch {}
+    };
+    setStatus('success');
 
-  if (status === 'loading') {
+    const intervalId = setInterval(() => {
+      fetchMyAPI();
+    }, 1000 * 5); // in milliseconds
+    return () => clearInterval(intervalId);
+  });
+
+  if (status === 'loading' || data === null) {
     return <Spinner />;
   }
 
@@ -95,14 +109,14 @@ const HomePage = () => {
                 <Text style={{fontSize: 16, fontWeight: 'bold'}}>
                   Freyanashifa Jayawardana
                 </Text>
-                <Text style={{fontSize: 12}}>Front End Developer</Text>
+                <Text style={{fontSize: 12}}>{data.email}</Text>
               </View>
             </View>
-            {/* <Button
+            <Button
               title="Log out"
-              onPress={() => authContext.logout()}
+              onPress={() => logout()}
               style={{marginBottom: 20}}
-            /> */}
+            />
             {/* <Button title="Load" onPress={loadImage} /> */}
             {/* <Text>{status}</Text> */}
           </View>
